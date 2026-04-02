@@ -1,5 +1,6 @@
 package com.jeeva.urlshortener.service.impl;
 
+import com.jeeva.urlshortener.cache.CacheService;
 import com.jeeva.urlshortener.encoder.ShortUrlEncoder;
 import com.jeeva.urlshortener.generator.IdGenerator;
 import com.jeeva.urlshortener.model.Url;
@@ -24,13 +25,17 @@ public class UrlServiceImpl implements UrlService {
     private final UrlRepository urlRepository;
     private final IdGenerator idGenerator;
     private final ShortUrlEncoder encoder;
+    private final CacheService cacheService;
 
     public UrlServiceImpl(UrlRepository urlRepository,
                           IdGenerator idGenerator,
-                          ShortUrlEncoder encoder) {
+                          ShortUrlEncoder encoder,
+                          CacheService cacheService) {
         this.urlRepository = urlRepository;
         this.idGenerator = idGenerator;
         this.encoder = encoder;
+        this.cacheService = cacheService;
+
     }
 
     /**
@@ -41,6 +46,13 @@ public class UrlServiceImpl implements UrlService {
     public String shortenUrl(String longUrl) {
 
 //        validateUrl(longUrl);
+
+        Optional<Url> existing = urlRepository.findByLongUrl(longUrl);
+
+        if (existing.isPresent()) {
+            log.info("URL already shortened. Returning existing shortUrl={}", existing.get().getShortUrl());
+            return existing.get().getShortUrl();
+        }
 
         long id = idGenerator.generateId();
         String shortUrl = encoder.encode(id);
@@ -73,11 +85,24 @@ public class UrlServiceImpl implements UrlService {
             throw new InvalidUrlException("Short URL cannot be null or empty");
         }
 
-        return urlRepository.findByShortUrl(shortUrl)
+        Optional<String> cached = cacheService.get(shortUrl);
+        if (cached.isPresent()) {
+            log.info("Cache HIT for shortUrl={}", shortUrl);
+            return cached;
+        }
+
+
+        log.info("Cache MISS for shortUrl={}", shortUrl);
+
+        String longUrl = String.valueOf(urlRepository.findByShortUrl(shortUrl)
                 .map(url -> {
                     log.info("Redirecting shortUrl={} to longUrl={}", shortUrl, url.getLongUrl());
                     return url.getLongUrl();
-                });
+                }));
+
+        cacheService.put(shortUrl, longUrl);
+
+        return Optional.of(longUrl);
     }
 
     /**
