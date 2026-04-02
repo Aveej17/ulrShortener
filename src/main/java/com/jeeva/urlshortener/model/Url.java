@@ -27,6 +27,9 @@ public class Url {
     private String longUrl;
 
     @Column(nullable = false)
+    private int shardId;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     // Optional but useful (future scalability features)

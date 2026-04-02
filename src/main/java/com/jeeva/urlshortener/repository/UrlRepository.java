@@ -10,5 +10,6 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
 
     // Optional (for idempotency improvement later)
     Optional<Url> findByLongUrl(String longUrl);
+    Optional<Url> findByShortUrlAndShardId(String shortUrl, int shardId);
 }
 

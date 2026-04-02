@@ -1,6 +1,7 @@
 package com.jeeva.urlshortener.service.impl;
 
 import com.jeeva.urlshortener.cache.CacheService;
+import com.jeeva.urlshortener.datastore.UrlDataStore;
 import com.jeeva.urlshortener.encoder.ShortUrlEncoder;
 import com.jeeva.urlshortener.generator.IdGenerator;
 import com.jeeva.urlshortener.model.Url;
@@ -22,16 +23,16 @@ import java.util.Optional;
 @Service
 public class UrlServiceImpl implements UrlService {
 
-    private final UrlRepository urlRepository;
+    private final UrlDataStore dataStore;
     private final IdGenerator idGenerator;
     private final ShortUrlEncoder encoder;
     private final CacheService cacheService;
 
-    public UrlServiceImpl(UrlRepository urlRepository,
+    public UrlServiceImpl(UrlDataStore dataStore,
                           IdGenerator idGenerator,
                           ShortUrlEncoder encoder,
                           CacheService cacheService) {
-        this.urlRepository = urlRepository;
+        this.dataStore = dataStore;
         this.idGenerator = idGenerator;
         this.encoder = encoder;
         this.cacheService = cacheService;
@@ -47,7 +48,7 @@ public class UrlServiceImpl implements UrlService {
 
 //        validateUrl(longUrl);
 
-        Optional<Url> existing = urlRepository.findByLongUrl(longUrl);
+        Optional<Url> existing = dataStore.findByLongUrl(longUrl);
 
         if (existing.isPresent()) {
             log.info("URL already shortened. Returning existing shortUrl={}", existing.get().getShortUrl());
@@ -67,7 +68,7 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("Saving URL mapping: {} -> {}", shortUrl, longUrl);
 
-        urlRepository.save(url);
+        dataStore.save(url);
 
         return shortUrl;
     }
@@ -94,7 +95,7 @@ public class UrlServiceImpl implements UrlService {
 
         log.info("Cache MISS for shortUrl={}", shortUrl);
 
-        String longUrl = String.valueOf(urlRepository.findByShortUrl(shortUrl)
+        String longUrl = String.valueOf(dataStore.findByShortUrl(shortUrl)
                 .map(url -> {
                     log.info("Redirecting shortUrl={} to longUrl={}", shortUrl, url.getLongUrl());
                     return url.getLongUrl();
